@@ -1,0 +1,24 @@
+{
+  "name": "bcm2835-io",
+  "version": "0.1.0",
+  "description": "Raspberry Pi IO library wrapping bcm2835 C++ library",
+  "main": "./lib/bcm2835-io.js",
+  "scripts": {
+    "configure": "node-gyp configure",
+    "build": "node-gyp build",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Manewu/node-bcm2835.git"
+  },
+  "devDependencies": {
+    "nan": "^2.0.5",
+    "mocha": "^2.2.5",
+    "node-gyp": "^1.0.3"
+  },
+  "dependencies": {
+    "bindings": "^1.2.1"
+  },
+  "license": "GPL-2.0"
+}
