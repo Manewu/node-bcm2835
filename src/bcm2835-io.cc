@@ -4,6 +4,82 @@ extern "C" {
 #include "bcm2835.h"
 }
 
+void BeginI2c(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+#ifdef __arm__
+    bcm2835_i2c_begin();
+    info.GetReturnValue().Set(0);
+#else
+#endif
+}
+
+void EndI2c(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+#ifdef __arm__
+    bcm2835_i2c_end();
+    info.GetReturnValue().Set(0);
+#else
+#endif
+}
+
+void SetI2cSlaveAddress(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+#ifdef __arm__
+    if (info.Length() != 1) {
+        Nan::ThrowTypeError("Wrong number of arguments");
+        return;
+    }
+    if (!info[0]->IsNumber()) {
+        Nan::ThrowTypeError("First argument should be number (I2C Slave address)");
+        return;
+    }
+
+    bcm2835_i2c_setSlaveAddress(info[0]->NumberValue());
+
+    info.GetReturnValue().Set(0);
+#else
+#endif
+}
+
+void WriteI2c(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+#ifdef __arm__
+    if (info.Length() != 2) {
+        Nan::ThrowTypeError("Wrong number of arguments");
+        return;
+    }
+    if (!node::Buffer::HasInstance(info[0]) || !info[1]->IsNumber()) {
+        Nan::ThrowTypeError("First argument should be Buffer, second byte number (length)");
+        return;
+    }
+    char* buf = (char*) node::Buffer::Data(info[0]->ToObject());
+    uint32_t len = info[1]->Uint32Value();
+
+    uint8_t value = bcm2835_i2c_write(buf, len);
+
+    info.GetReturnValue().Set(value);   //bcm2835I2CReasonCodes, 0 = Success
+#else
+#endif
+}
+
+void SetGPIO_pud(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+#ifdef __arm__
+    if (info.Length() < 2) {
+        Nan::ThrowTypeError("Wrong number of arguments");
+        return;
+    }
+    if (!info[0]->IsNumber() || !info[1]->IsNumber()) {
+        Nan::ThrowTypeError("First argument should be number (GPIO), second number (bcm2835PUDControl)");
+        return;
+    }
+    if (info[0]->NumberValue() > 27) {
+        Nan::ThrowRangeError("Highest GPIO # = GPIO27");
+        return;
+    }
+
+    bcm2835_gpio_set_pud(info[0]->NumberValue(), info[1]->NumberValue());
+
+    info.GetReturnValue().Set(0);
+#else
+#endif
+}
+
 void SetGPIO(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 #ifdef __arm__
     if (info.Length() < 2) {
@@ -12,6 +88,10 @@ void SetGPIO(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     }
     if (!info[0]->IsNumber() || !info[1]->IsString()) {
         Nan::ThrowTypeError("First argument should be number (GPIO), second string (in or out)");
+        return;
+    }
+    if (info[0]->NumberValue() > 27) {
+        Nan::ThrowRangeError("Highest GPIO # = GPIO27");
         return;
     }
 
@@ -35,6 +115,10 @@ void WriteGPIO(const Nan::FunctionCallbackInfo<v8::Value>& info) {
         Nan::ThrowTypeError("First argument should be number (GPIO), second number (0 or 1) or bool");
         return;
     }
+    if (info[0]->NumberValue() > 27) {
+        Nan::ThrowRangeError("Highest GPIO # = GPIO27");
+        return;
+    }
 
 	bcm2835_gpio_write(info[0]->NumberValue(), info[1]->NumberValue());
 
@@ -51,6 +135,10 @@ void ReadGPIO(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     }
     if (!info[0]->IsNumber()) {
         Nan::ThrowTypeError("First argument should be number (GPIO)");
+        return;
+    }
+    if (info[0]->NumberValue() > 27) {
+        Nan::ThrowRangeError("Highest GPIO # = GPIO27");
         return;
     }
 
@@ -79,14 +167,24 @@ void InitIO(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 }
 
 void Init(v8::Local<v8::Object> exports) {
-    exports->Set(Nan::New("initIO").ToLocalChecked(),
-                 Nan::New<v8::FunctionTemplate>(InitIO)->GetFunction());
+    exports->Set(Nan::New("beginI2c").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(BeginI2c)->GetFunction());
+    exports->Set(Nan::New("endI2c").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(EndI2c)->GetFunction());
+    exports->Set(Nan::New("setI2cSlaveAddress").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(SetI2cSlaveAddress)->GetFunction());
+    exports->Set(Nan::New("writeI2c").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(WriteI2c)->GetFunction());
+    exports->Set(Nan::New("setGPIO_pud").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(SetGPIO_pud)->GetFunction());
     exports->Set(Nan::New("setGPIO").ToLocalChecked(),
                  Nan::New<v8::FunctionTemplate>(SetGPIO)->GetFunction());
     exports->Set(Nan::New("writeGPIO").ToLocalChecked(),
                  Nan::New<v8::FunctionTemplate>(WriteGPIO)->GetFunction());
     exports->Set(Nan::New("readGPIO").ToLocalChecked(),
                  Nan::New<v8::FunctionTemplate>(ReadGPIO)->GetFunction());
+    exports->Set(Nan::New("initIO").ToLocalChecked(),
+                 Nan::New<v8::FunctionTemplate>(InitIO)->GetFunction());
 }
 
 NODE_MODULE(addon, Init)
